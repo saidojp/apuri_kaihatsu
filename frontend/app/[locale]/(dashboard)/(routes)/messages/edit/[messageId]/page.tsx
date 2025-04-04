@@ -21,7 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useRouter } from "@/navigation";
 import { useMakeZodI18nMap } from "@/lib/zodIntl";
@@ -31,6 +31,26 @@ import NotFound from "@/components/NotFound";
 import useApiQuery from "@/lib/useApiQuery";
 import Post from "@/types/post";
 import useApiMutation from "@/lib/useApiMutation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Pencil, Send } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   title: z.string().min(2).max(50),
@@ -38,7 +58,7 @@ const formSchema = z.object({
   priority: z.enum(["high", "medium", "low"]),
 });
 
-export default function SendMessagePage({
+export default function EditMessagePage({
   params: { messageId },
 }: {
   params: { messageId: string };
@@ -46,6 +66,7 @@ export default function SendMessagePage({
   const zodErrors = useMakeZodI18nMap();
   z.setErrorMap(zodErrors);
   const t = useTranslations("sendmessage");
+  const common = useTranslations("common");
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,6 +75,7 @@ export default function SendMessagePage({
       priority: "low",
     },
   });
+  const formValues = useWatch({ control: form.control });
   const router = useRouter();
   const { data, isLoading, isError } = useApiQuery<{
     post: Post;
@@ -82,94 +104,219 @@ export default function SendMessagePage({
     }
   }, [data, form]);
 
+  // Helper function to get priority color
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "high":
+        return "bg-red-100 text-red-800 hover:bg-red-200";
+      case "medium":
+        return "bg-amber-100 text-amber-800 hover:bg-amber-200";
+      case "low":
+        return "bg-green-100 text-green-800 hover:bg-green-200";
+      default:
+        return "bg-slate-100 text-slate-800 hover:bg-slate-200";
+    }
+  };
+
   if (isError) return <NotFound />;
 
   return (
-    <div className="w-full">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit((values) => mutate(values as any))}
-          className="space-y-4"
-        >
-          <div className="flex flex-row justify-between items-center">
-            <h1 className="text-3xl font-bold">{t("editMessage")}</h1>
-            <Link href="/messages" passHref>
-              <Button variant={"secondary"}>{t("back")}</Button>
-            </Link>
+    <div className="fixed inset-0 bg-background z-50 w-full h-full overflow-auto">
+      <Card className="shadow-lg border-0 rounded-none min-h-screen flex flex-col">
+        <CardHeader className="bg-slate-50 dark:bg-slate-900 border-b">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <Link href="/messages" passHref>
+                <Button variant="ghost" size="icon">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <CardTitle className="text-2xl">{t("editMessage")}</CardTitle>
+            </div>
           </div>
+          <CardDescription className="text-base">
+            Edit existing message
+          </CardDescription>
+        </CardHeader>
 
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field, formState }) => (
-              <FormItem>
-                <FormLabel>{t("title")}</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder={t("typeTitle")} />
-                </FormControl>
-                <FormMessage>
-                  {formState.errors.title &&
-                    "Title is required. Title should be more than 5 characters"}
-                </FormMessage>
-              </FormItem>
-            )}
-          />
+        <CardContent className="pt-6 flex-grow">
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit((values) => mutate(values as any))}
+              className="space-y-6 flex flex-col h-full"
+            >
+              <div className="space-y-5 flex-grow">
+                <h3 className="text-lg font-medium">{t("messageDetails")}</h3>
 
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field, formState }) => (
-              <FormItem>
-                <FormLabel>{t("yourMessage")}</FormLabel>
-                <FormControl>
-                  <Textarea placeholder={t("typeMessage")} {...field} />
-                </FormControl>
-                <FormMessage>
-                  {formState.errors.description &&
-                    "Message is required. Message should be more than 10 characters"}
-                </FormMessage>
-              </FormItem>
-            )}
-          />
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field, formState }) => (
+                    <FormItem>
+                      <FormLabel className="text-base">{t("title")}</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder={t("typeTitle")}
+                          className="w-full"
+                        />
+                      </FormControl>
+                      <FormMessage>
+                        {formState.errors.title && t("titleRequired")}
+                      </FormMessage>
+                    </FormItem>
+                  )}
+                />
 
-          <FormField
-            control={form.control}
-            name="priority"
-            render={({ field, formState }) => (
-              <FormItem>
-                <FormLabel>{t("choosePriority")}</FormLabel>
-                <FormControl>
-                  <Select
-                    {...field}
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder={t("choosePriority")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>{t("priority")}</SelectLabel>
-                        <SelectItem value="high">{t("high")}</SelectItem>
-                        <SelectItem value="medium">{t("medium")}</SelectItem>
-                        <SelectItem value="low">{t("low")}</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage>
-                  {formState.errors.priority &&
-                    "You should select one priority"}
-                </FormMessage>
-              </FormItem>
-            )}
-          />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field, formState }) => (
+                    <FormItem className="flex-grow">
+                      <FormLabel className="text-base">
+                        {t("yourMessage")}
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={12}
+                          placeholder={t("typeMessage")}
+                          {...field}
+                          className="w-full resize-y min-h-[300px]"
+                        />
+                      </FormControl>
+                      <FormMessage>
+                        {formState.errors.description && t("messageRequired")}
+                      </FormMessage>
+                    </FormItem>
+                  )}
+                />
 
-          <Button disabled={isPending || isLoading}>
-            {isPending ? `${t("editMessage")}...` : t("editMessage")}
-          </Button>
-        </form>
-      </Form>
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field, formState }) => (
+                    <FormItem>
+                      <FormLabel className="text-base">
+                        {t("choosePriority")}
+                      </FormLabel>
+                      <div className="flex gap-3 w-full">
+                        <Button
+                          type="button"
+                          className={`flex-1 ${
+                            field.value === "low"
+                              ? getPriorityColor("low")
+                              : "bg-slate-100 hover:bg-slate-200"
+                          }`}
+                          variant="outline"
+                          onClick={() => form.setValue("priority", "low")}
+                        >
+                          {t("low")}
+                        </Button>
+                        <Button
+                          type="button"
+                          className={`flex-1 ${
+                            field.value === "medium"
+                              ? getPriorityColor("medium")
+                              : "bg-slate-100 hover:bg-slate-200"
+                          }`}
+                          variant="outline"
+                          onClick={() => form.setValue("priority", "medium")}
+                        >
+                          {t("medium")}
+                        </Button>
+                        <Button
+                          type="button"
+                          className={`flex-1 ${
+                            field.value === "high"
+                              ? getPriorityColor("high")
+                              : "bg-slate-100 hover:bg-slate-200"
+                          }`}
+                          variant="outline"
+                          onClick={() => form.setValue("priority", "high")}
+                        >
+                          {t("high")}
+                        </Button>
+                      </div>
+                      <FormMessage>
+                        {formState.errors.priority && t("priorityRequired")}
+                      </FormMessage>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="flex justify-between items-center pt-4 pb-6 sticky bottom-0 bg-background">
+                <Link href="/messages" passHref>
+                  <Button type="button" variant="outline" size="lg">
+                    {t("cancel")}
+                  </Button>
+                </Link>
+
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      size="lg"
+                      disabled={isPending || isLoading}
+                      className="gap-2"
+                    >
+                      <Pencil className="h-5 w-5" />
+                      {isPending || isLoading ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl">
+                        {t("preview")}
+                      </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-5 py-4">
+                      <div className="space-y-3">
+                        <h3 className="text-xl font-medium">
+                          {formValues.title}
+                        </h3>
+                        <p className="text-base whitespace-pre-wrap max-h-[60vh] overflow-auto border rounded-md p-4">
+                          {formValues.description}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-4">
+                        <Badge
+                          className={`text-base px-3 py-1 ${getPriorityColor(
+                            String(formValues.priority || "low")
+                          )}`}
+                        >
+                          {t("priority")}:{" "}
+                          {formValues.priority
+                            ? t(String(formValues.priority))
+                            : t("low")}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline" size="lg">
+                          {t("edit")}
+                        </Button>
+                      </DialogClose>
+                      <DialogClose asChild>
+                        <Button type="submit" size="lg" className="gap-2">
+                          <Pencil className="h-5 w-5" />
+                          Save Changes
+                        </Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

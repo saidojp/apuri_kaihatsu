@@ -94,7 +94,7 @@
     "priority": "Priority",
     "high": "High",
     "medium": "Medium",
-    "low": "low",
+    "low": "Low",
     "sentMessages": "Sent Messages",
     "createNew": "Create New",
     "createMessage": "Create Message",
@@ -112,7 +112,16 @@
     "editMessage": "Edit Message",
     "preview": "Preview",
     "messageSent": "Message Sent Successfully",
-    "messageEdited": "Message Edited Successfully"
+    "messageEdited": "Message Edited Successfully",
+    "createNewMessage": "Create a new message to send to students and groups",
+    "messageDetails": "Message Details",
+    "recipients": "Recipients",
+    "titleRequired": "Please enter a title",
+    "messageRequired": "Please enter a message",
+    "priorityRequired": "Please select a priority",
+    "noRecipientsWarning": "Please select at least one group or student to send this message to",
+    "edit": "Edit",
+    "cancel": "Cancel"
   },
   "ThisMessage": {
     "AS_PUBLISHER": "Publisher",
