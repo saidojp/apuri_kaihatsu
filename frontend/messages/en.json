@@ -113,6 +113,7 @@
     "preview": "Preview",
     "messageSent": "Message Sent Successfully",
     "messageEdited": "Message Edited Successfully",
+    "messageScheduled": "Message Scheduled Successfully",
     "createNewMessage": "Create a new message to send to students and groups",
     "messageDetails": "Message Details",
     "recipients": "Recipients",
@@ -121,7 +122,15 @@
     "priorityRequired": "Please select a priority",
     "noRecipientsWarning": "Please select at least one group or student to send this message to",
     "edit": "Edit",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "scheduleDelivery": "Schedule Delivery",
+    "scheduleForLater": "Schedule for later",
+    "scheduleDescription": "Send this message at a scheduled date and time",
+    "deliveryDate": "Delivery Date",
+    "deliveryTime": "Delivery Time",
+    "selectDate": "Select a date",
+    "scheduledMessages": "Scheduled Messages",
+    "delivery_at": "Scheduled for"
   },
   "ThisMessage": {
     "AS_PUBLISHER": "Publisher",

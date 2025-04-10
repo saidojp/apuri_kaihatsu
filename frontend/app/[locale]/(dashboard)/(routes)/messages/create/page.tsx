@@ -44,6 +44,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { z } from "zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -57,16 +58,28 @@ import Post from "@/types/post";
 import {
   AlertCircle,
   ArrowLeft,
+  Calendar,
+  Clock,
   Send,
   Users,
   UserRound,
   X,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 const formSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   priority: z.enum(["high", "medium", "low"]),
+  is_scheduled: z.boolean().default(false),
+  delivery_date: z.date().optional(),
+  delivery_time: z.string().optional(),
 });
 
 export default function SendMessagePage() {
@@ -83,6 +96,9 @@ export default function SendMessagePage() {
       title: "",
       description: "",
       priority: "low",
+      is_scheduled: false,
+      delivery_date: undefined,
+      delivery_time: undefined,
     },
   });
   const formValues = useWatch({ control: form.control });
@@ -94,7 +110,7 @@ export default function SendMessagePage() {
     {
       onSuccess: (data) => {
         toast({
-          title: t("messageSent"),
+          title: formValues.is_scheduled ? t("messageScheduled") : t("messageSent"),
           description: data.post.title,
         });
         form.reset();
@@ -112,6 +128,11 @@ export default function SendMessagePage() {
       form.setValue("title", parsedFormData.title);
       form.setValue("description", parsedFormData.description);
       form.setValue("priority", parsedFormData.priority);
+      form.setValue("is_scheduled", parsedFormData.is_scheduled || false);
+      if (parsedFormData.delivery_date) {
+        form.setValue("delivery_date", new Date(parsedFormData.delivery_date));
+      }
+      form.setValue("delivery_time", parsedFormData.delivery_time);
     }
 
     const subscription = form.watch((values) => {
@@ -168,13 +189,27 @@ export default function SendMessagePage() {
         <CardContent className="pt-6">
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit((data) =>
-                mutate({
-                  ...data,
-                  students: selectedStudents.map((student) => student.id),
-                  groups: selectedGroups.map((group) => group.id),
-                } as any)
-              )}
+              onSubmit={form.handleSubmit((data) => {
+                if (data.is_scheduled && data.delivery_date && data.delivery_time) {
+                  const [hours, minutes] = data.delivery_time.split(':').map(Number);
+                  const deliveryDate = new Date(data.delivery_date);
+                  deliveryDate.setHours(hours, minutes);
+                  
+                  const delivery_at = deliveryDate;
+                  mutate({
+                    ...data,
+                    delivery_at,
+                    students: selectedStudents.map((student) => student.id),
+                    groups: selectedGroups.map((group) => group.id),
+                  } as any);
+                } else {
+                  mutate({
+                    ...data,
+                    students: selectedStudents.map((student) => student.id),
+                    groups: selectedGroups.map((group) => group.id),
+                  } as any);
+                }
+              })}
               ref={formRef}
               className="space-y-6"
             >
@@ -210,14 +245,13 @@ export default function SendMessagePage() {
                     render={({ field, formState }) => (
                       <FormItem>
                         <FormLabel className="text-base">
-                          {t("yourMessage")}
+                          {t("description")}
                         </FormLabel>
                         <FormControl>
                           <Textarea
-                            rows={8}
-                            placeholder={t("typeMessage")}
                             {...field}
-                            className="w-full resize-y min-h-[200px]"
+                            placeholder={t("typeMessage")}
+                            className="min-h-[120px]"
                           />
                         </FormControl>
                         <FormMessage>
@@ -230,55 +264,131 @@ export default function SendMessagePage() {
                   <FormField
                     control={form.control}
                     name="priority"
-                    render={({ field, formState }) => (
+                    render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base">
-                          {t("choosePriority")}
+                          {t("priority")}
                         </FormLabel>
-                        <div className="flex gap-3 w-full">
-                          <Button
-                            type="button"
-                            className={`flex-1 ${
-                              field.value === "low"
-                                ? getPriorityColor("low")
-                                : "bg-slate-100 hover:bg-slate-200"
-                            }`}
-                            variant="outline"
-                            onClick={() => form.setValue("priority", "low")}
+                        <FormControl>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
                           >
-                            {t("low")}
-                          </Button>
-                          <Button
-                            type="button"
-                            className={`flex-1 ${
-                              field.value === "medium"
-                                ? getPriorityColor("medium")
-                                : "bg-slate-100 hover:bg-slate-200"
-                            }`}
-                            variant="outline"
-                            onClick={() => form.setValue("priority", "medium")}
-                          >
-                            {t("medium")}
-                          </Button>
-                          <Button
-                            type="button"
-                            className={`flex-1 ${
-                              field.value === "high"
-                                ? getPriorityColor("high")
-                                : "bg-slate-100 hover:bg-slate-200"
-                            }`}
-                            variant="outline"
-                            onClick={() => form.setValue("priority", "high")}
-                          >
-                            {t("high")}
-                          </Button>
-                        </div>
-                        <FormMessage>
-                          {formState.errors.priority && t("priorityRequired")}
-                        </FormMessage>
+                            <SelectTrigger className="w-full">
+                              <SelectValue
+                                placeholder={t("selectPriority")}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectLabel>
+                                  {t("choosePriority")}
+                                </SelectLabel>
+                                <SelectItem value="high">
+                                  {t("high")}
+                                </SelectItem>
+                                <SelectItem value="medium">
+                                  {t("medium")}
+                                </SelectItem>
+                                <SelectItem value="low">{t("low")}</SelectItem>
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
                       </FormItem>
                     )}
                   />
+
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-medium">{t("scheduleDelivery")}</h3>
+                    
+                    <FormField
+                      control={form.control}
+                      name="is_scheduled"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">
+                              {t("scheduleForLater")}
+                            </FormLabel>
+                            <FormDescription>
+                              {t("scheduleDescription")}
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {formValues.is_scheduled && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="delivery_date"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel className="text-base mb-2">{t("deliveryDate")}</FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "w-full pl-3 text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value ? (
+                                        format(field.value, "PPP")
+                                      ) : (
+                                        <span>{t("selectDate")}</span>
+                                      )}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <CalendarComponent
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) =>
+                                      date < new Date()
+                                    }
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="delivery_time"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-base">{t("deliveryTime")}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="time"
+                                  {...field}
+                                  className="w-full"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-5">

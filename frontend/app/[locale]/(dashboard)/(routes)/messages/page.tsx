@@ -48,15 +48,25 @@ import useApiQuery from "@/lib/useApiQuery";
 import useApiMutation from "@/lib/useApiMutation";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
 
 export default function Info() {
   const t = useTranslations("posts");
+  const tSend = useTranslations("sendmessage");
   const tName = useTranslations("names");
   const [page, setPage] = useState(1);
+  const [scheduledPage, setScheduledPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [scheduledSearch, setScheduledSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("sent"); // "sent" or "scheduled"
   const { data } = useApiQuery<PostApi>(
     `post/list?page=${page}&text=${search}`,
     ["posts", page, search]
+  );
+  const { data: scheduledData } = useApiQuery<PostApi>(
+    `post/scheduled?page=${scheduledPage}&text=${scheduledSearch}`,
+    ["scheduled-posts", scheduledPage, scheduledSearch]
   );
   const pathName = usePathname();
   const router = useRouter();
@@ -71,6 +81,7 @@ export default function Info() {
     {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: ["posts"] });
+        queryClient.invalidateQueries({ queryKey: ["scheduled-posts"] });
 
         // Set a timeout to remove the row from the deleting state
         setTimeout(() => {
@@ -274,6 +285,30 @@ export default function Info() {
     },
   ];
 
+  // Add column for scheduled delivery time
+  const scheduledPostColumns: ColumnDef<Post>[] = [
+    ...postColumns.slice(0, postColumns.length - 1),
+    {
+      accessorKey: "delivery_at",
+      header: tSend("delivery_at"),
+      cell: ({ row }) => {
+        const deliveryDate = row.original.delivery_at 
+          ? new Date(row.original.delivery_at) 
+          : null;
+        
+        return deliveryDate ? (
+          <Link
+            href={`messages/${row.original.id}`}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {format(deliveryDate, "PPP p")}
+          </Link>
+        ) : null;
+      },
+    },
+    postColumns[postColumns.length - 1], // Add the action column at the end
+  ];
+
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -289,31 +324,76 @@ export default function Info() {
         </Link>
       </div>
 
-      <Card className="border shadow-sm">
-        <CardHeader className="pb-3 border-b">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t("filter")}
-                onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                className="pl-9"
+      <Tabs
+        defaultValue="sent"
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value)}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="sent">{t("posts")}</TabsTrigger>
+          <TabsTrigger value="scheduled">{tSend("scheduledMessages")}</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="sent" className="mt-0">
+          <Card className="border shadow-sm">
+            <CardHeader className="pb-3 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={t("filter")}
+                    onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
+                    className="pl-9"
+                  />
+                </div>
+                <PaginationApi data={data?.pagination ?? null} setPage={setPage} />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <TableApi
+                data={data?.posts ?? null}
+                columns={postColumns}
+                deletingRows={deletingRows}
               />
-            </div>
-            <PaginationApi data={data?.pagination ?? null} setPage={setPage} />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <TableApi
-            data={data?.posts ?? null}
-            columns={postColumns}
-            deletingRows={deletingRows}
-          />
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="scheduled" className="mt-0">
+          <Card className="border shadow-sm">
+            <CardHeader className="pb-3 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={t("filter")}
+                    onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setScheduledSearch(e.target.value);
+                      setScheduledPage(1);
+                    }}
+                    className="pl-9"
+                  />
+                </div>
+                <PaginationApi 
+                  data={scheduledData?.pagination ?? null} 
+                  setPage={setScheduledPage} 
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <TableApi
+                data={scheduledData?.posts ?? null}
+                columns={scheduledPostColumns}
+                deletingRows={deletingRows}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

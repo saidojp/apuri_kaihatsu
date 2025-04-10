@@ -9,4 +9,5 @@ export default interface Post {
   sent_at: string;
   edited_at: string;
   read_percent: string;
+  delivery_at?: string;
 }

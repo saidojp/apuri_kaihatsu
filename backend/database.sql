@@ -111,6 +111,7 @@ CREATE TABLE `Post`
     `priority`    enum ('low', 'medium', 'high') NOT NULL DEFAULT 'low',
     `admin_id`    int                            NOT NULL,
     `sent_at`     datetime                       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `delivery_at` datetime                       NULL,
     `edited_at`   datetime                       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `school_id`   int                            NOT NULL,
     PRIMARY KEY (`id`),

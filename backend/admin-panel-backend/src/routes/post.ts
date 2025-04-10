@@ -21,6 +21,7 @@ class StudentController implements IController {
     initRoutes(): void {
         this.router.post('/post/create', verifyToken, this.createPost)
         this.router.get('/post/list', verifyToken, this.postList)
+        this.router.get('/post/scheduled', verifyToken, this.scheduledPostList)
 
         this.router.get('/post/:id', verifyToken, this.postView)
         this.router.put('/post/:id', verifyToken, this.postUpdate)
@@ -1026,6 +1027,9 @@ class StudentController implements IController {
                 params.text = `%${text}%`;
             }
 
+            // Only show posts that are either already delivered or have no scheduled delivery
+            filters.push('(po.delivery_at IS NULL OR po.delivery_at <= NOW())');
+
             const whereClause = filters.length > 0 ? ' AND ' + filters.join(' AND ') : '';
 
             const postList = await DB.query(`SELECT
@@ -1092,6 +1096,98 @@ class StudentController implements IController {
         }
     }
 
+    scheduledPostList = async (req: ExtendedRequest, res: Response) => {
+        try {
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(process.env.PER_PAGE + '');
+            const offset = (page - 1) * limit;
+
+            const priority = req.query.priority as string || '';
+            const text = req.query.text as string || '';
+
+            const filters = ['po.delivery_at IS NOT NULL AND po.delivery_at > NOW()'];
+            const params: any = {
+                school_id: req.user.school_id,
+                limit: limit,
+                offset: offset
+            };
+
+            if (priority && isValidPriority(priority)) {
+                filters.push('po.priority = :priority');
+                params.priority = priority;
+            }
+            if (text) {
+                filters.push('(po.title LIKE :text OR po.description LIKE :text)');
+                params.text = `%${text}%`;
+            }
+
+            const whereClause = filters.length > 0 ? ' AND ' + filters.join(' AND ') : '';
+
+            const postList = await DB.query(`SELECT
+                    po.id, po.title, po.description, po.priority,
+                    ad.id AS admin_id, ad.given_name AS admin_given_name, 
+                    ad.family_name AS admin_family_name,
+                    po.sent_at, po.edited_at, po.delivery_at,
+                    COALESCE(ROUND((COUNT(DISTINCT CASE WHEN pp.viewed_at IS NOT NULL THEN ps.student_id END) / COUNT(DISTINCT ps.student_id)) * 100, 2), 0) AS read_percent
+                FROM Post AS po
+                INNER JOIN Admin AS ad ON ad.id = po.admin_id
+                LEFT JOIN PostStudent AS ps ON ps.post_id = po.id
+                LEFT JOIN PostParent AS pp ON pp.post_student_id = ps.id
+                WHERE po.school_id = :school_id ${whereClause}
+                GROUP BY po.id, po.title, po.description, po.priority, ad.given_name, ad.family_name, po.sent_at, po.edited_at, po.delivery_at
+                ORDER BY po.delivery_at ASC
+                LIMIT :limit OFFSET :offset;`, params);
+
+
+            const totalPosts = (await DB.query(`SELECT COUNT(DISTINCT po.id) AS total
+                FROM Post AS po
+                WHERE po.school_id = :school_id ${whereClause};`, params))[0].total
+            const totalPages = Math.ceil(totalPosts / limit);
+
+            const pagination = {
+                current_page: page,
+                per_page: limit,
+                total_pages: totalPages,
+                total_posts: totalPosts,
+                next_page: page < totalPages ? page + 1 : null,
+                prev_page: page > 1 ? page - 1 : null,
+                links: generatePaginationLinks(page, totalPages)
+            };
+
+            const formattedPostList = postList.map((post: any) => ({
+                id: post.id,
+                title: post.title,
+                description: post.description,
+                priority: post.priority,
+                sent_at: post.sent_at,
+                edited_at: post.edited_at,
+                delivery_at: post.delivery_at,
+                read_percent: post.read_percent,
+                admin: {
+                    id: post.admin_id,
+                    given_name: post.admin_given_name,
+                    family_name: post.admin_family_name
+                }
+            }));
+
+
+            return res.status(200).json({
+                posts: formattedPostList,
+                pagination: pagination
+            }).end()
+        } catch (e: any) {
+            if (e.status) {
+                return res.status(e.status).json({
+                    error: e.message
+                }).end();
+            } else {
+                return res.status(500).json({
+                    error: 'Internal server error'
+                }).end();
+            }
+        }
+    }
+
     createPost = async (req: ExtendedRequest, res: Response) => {
         try {
             const {
@@ -1101,6 +1197,7 @@ class StudentController implements IController {
                 images,
                 students,
                 groups,
+                delivery_at
             } = req.body
 
             if (!title || !isValidString(title)) {
@@ -1122,16 +1219,66 @@ class StudentController implements IController {
                 }
             }
 
+            // Check if either students or groups are provided
+            if ((!students || students.length === 0) && (!groups || groups.length === 0)) {
+                throw {
+                    status: 401,
+                    message: 'No recipients specified'
+                }
+            }
 
-            const postInsert = await DB.execute(`
-            INSERT INTO Post (title, description, priority, admin_id, school_id)
-            VALUE (:title, :description, :priority, :admin_id, :school_id);`, {
+            // Validate and format delivery_at if provided
+            let deliveryAtValue = null;
+            if (delivery_at) {
+                // Check if the delivery date is in the future
+                const deliveryDate = new Date(delivery_at);
+                const now = new Date();
+                
+                if (isNaN(deliveryDate.getTime())) {
+                    throw {
+                        status: 401,
+                        message: 'Invalid delivery date format'
+                    }
+                }
+                
+                if (deliveryDate <= now) {
+                    throw {
+                        status: 401,
+                        message: 'Delivery date must be in the future'
+                    }
+                }
+                
+                deliveryAtValue = deliveryDate.toISOString().slice(0, 19).replace('T', ' ');
+            }
+
+            let insertQuery = `
+            INSERT INTO Post (title, description, priority, admin_id, school_id`;
+            
+            if (deliveryAtValue) {
+                insertQuery += `, delivery_at`;
+            }
+            
+            insertQuery += `) VALUE (:title, :description, :priority, :admin_id, :school_id`;
+            
+            if (deliveryAtValue) {
+                insertQuery += `, :delivery_at`;
+            }
+            
+            insertQuery += `);`;
+
+            const params: any = {
                 title: title,
                 description: description,
                 priority: priority,
                 admin_id: req.user.id,
                 school_id: req.user.school_id,
-            });
+            };
+            
+            if (deliveryAtValue) {
+                params.delivery_at = deliveryAtValue;
+            }
+
+            const postInsert = await DB.execute(insertQuery, params);
 
             const postId = postInsert.insertId;
             if (students && Array.isArray(students) && isValidArrayId(students) && students.length > 0) {
