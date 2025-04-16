@@ -122,7 +122,9 @@
     "priorityRequired": "優先度を選択してください",
     "noRecipientsWarning": "このメッセージを送信するには、少なくとも1つのグループまたは学生を選択してください",
     "edit": "編集",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "saveChanges": "変更を保存",
+    "saving": "保存中..."
   },
   "ThisMessage": {
     "AS_PUBLISHER": "出版社",

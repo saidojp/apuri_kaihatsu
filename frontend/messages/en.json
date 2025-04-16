@@ -123,6 +123,8 @@
     "noRecipientsWarning": "Please select at least one group or student to send this message to",
     "edit": "Edit",
     "cancel": "Cancel",
+    "saveChanges": "Save Changes",
+    "saving": "Saving...",
     "scheduleDelivery": "Schedule Delivery",
     "scheduleForLater": "Schedule for later",
     "scheduleDescription": "Send this message at a scheduled date and time",

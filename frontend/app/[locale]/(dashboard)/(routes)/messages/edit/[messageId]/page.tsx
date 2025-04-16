@@ -35,22 +35,11 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ArrowLeft, Pencil, Send } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Pencil } from "lucide-react";
 
 const formSchema = z.object({
   title: z.string().min(2).max(50),
@@ -142,6 +131,7 @@ export default function EditMessagePage({
         <CardContent className="pt-6 flex-grow">
           <Form {...form}>
             <form
+              id="edit-message-form"
               onSubmit={form.handleSubmit((values) => mutate(values as any))}
               className="space-y-6 flex flex-col h-full"
             >
@@ -254,64 +244,16 @@ export default function EditMessagePage({
                   </Button>
                 </Link>
 
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      type="button"
-                      size="lg"
-                      disabled={isPending || isLoading}
-                      className="gap-2"
-                    >
-                      <Pencil className="h-5 w-5" />
-                      {isPending || isLoading ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-auto">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl">
-                        {t("preview")}
-                      </DialogTitle>
-                    </DialogHeader>
-
-                    <div className="space-y-5 py-4">
-                      <div className="space-y-3">
-                        <h3 className="text-xl font-medium">
-                          {formValues.title}
-                        </h3>
-                        <p className="text-base whitespace-pre-wrap max-h-[60vh] overflow-auto border rounded-md p-4">
-                          {formValues.description}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-4">
-                        <Badge
-                          className={`text-base px-3 py-1 ${getPriorityColor(
-                            String(formValues.priority || "low")
-                          )}`}
-                        >
-                          {t("priority")}:{" "}
-                          {formValues.priority
-                            ? t(String(formValues.priority))
-                            : t("low")}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <DialogFooter className="gap-2 sm:gap-0">
-                      <DialogClose asChild>
-                        <Button type="button" variant="outline" size="lg">
-                          {t("edit")}
-                        </Button>
-                      </DialogClose>
-                      <DialogClose asChild>
-                        <Button type="submit" size="lg" className="gap-2">
-                          <Pencil className="h-5 w-5" />
-                          Save Changes
-                        </Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                <Button
+                  type="submit"
+                  form="edit-message-form"
+                  size="lg"
+                  disabled={isPending || isLoading}
+                  className="gap-2"
+                >
+                  <Pencil className="h-5 w-5" />
+                  {isPending ? t("saving") : t("saveChanges")}
+                </Button>
               </div>
             </form>
           </Form>

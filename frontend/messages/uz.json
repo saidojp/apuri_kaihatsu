@@ -120,9 +120,11 @@
     "titleRequired": "Iltimos, sarlavha kiriting",
     "messageRequired": "Iltimos, xabar kiriting",
     "priorityRequired": "Iltimos, ustuvorlikni tanlang",
-    "noRecipientsWarning": "Iltimos, bu xabarni yuborish uchun kamida bitta guruh yoki talabani tanlang",
+    "noRecipientsWarning": "Iltimos, bu xabarni yuborish uchun kamida bir guruh yoki o'quvchini tanlang",
     "edit": "Tahrirlash",
-    "cancel": "Bekor qilish"
+    "cancel": "Bekor qilish",
+    "saveChanges": "O'zgarishlarni saqlash",
+    "saving": "Saqlanmoqda..."
   },
   "ThisMessage": {
     "AS_PUBLISHER": "Nashriyot",
