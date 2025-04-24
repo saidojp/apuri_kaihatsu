@@ -50,6 +50,7 @@ import { z } from "zod";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useRouter } from "@/navigation";
+import { useSearchParams } from "next/navigation";
 import ImageFile from "@/types/ImageFile";
 import { useMakeZodI18nMap } from "@/lib/zodIntl";
 import { toast } from "@/components/ui/use-toast";
@@ -60,6 +61,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  Save,
   Send,
   Users,
   UserRound,
@@ -72,6 +74,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { saveDraft, getDraft, formToDraft, clearFormData } from "@/lib/drafts";
 
 const formSchema = z.object({
   title: z.string().min(1),
@@ -103,6 +106,8 @@ export default function SendMessagePage() {
   });
   const formValues = useWatch({ control: form.control });
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftId = searchParams.get("draft");
   const { mutate, isPending } = useApiMutation<{ post: Post }>(
     `post/create`,
     "POST",
@@ -116,30 +121,72 @@ export default function SendMessagePage() {
         form.reset();
         setSelectedStudents([]);
         setSelectedGroups([]);
+        clearFormData();
         router.push("/messages");
       },
     }
   );
 
   useEffect(() => {
-    const savedFormData = localStorage.getItem("formData");
-    const parsedFormData = savedFormData && JSON.parse(savedFormData);
-    if (parsedFormData) {
-      form.setValue("title", parsedFormData.title);
-      form.setValue("description", parsedFormData.description);
-      form.setValue("priority", parsedFormData.priority);
-      form.setValue("is_scheduled", parsedFormData.is_scheduled || false);
-      if (parsedFormData.delivery_date) {
-        form.setValue("delivery_date", new Date(parsedFormData.delivery_date));
+    if (draftId) {
+      const draft = getDraft(draftId);
+      if (draft) {
+        form.setValue("title", draft.title);
+        form.setValue("description", draft.description);
+        form.setValue("priority", draft.priority);
+        form.setValue("is_scheduled", draft.is_scheduled);
+        if (draft.delivery_date) {
+          form.setValue("delivery_date", new Date(draft.delivery_date));
+        }
+        form.setValue("delivery_time", draft.delivery_time);
+        
+        setSelectedStudents(draft.students);
+        setSelectedGroups(draft.groups);
+        
+        toast({
+          title: t("draftLoaded"),
+          description: draft.title,
+        });
       }
-      form.setValue("delivery_time", parsedFormData.delivery_time);
+    } else {
+      const savedFormData = localStorage.getItem("formData");
+      const parsedFormData = savedFormData && JSON.parse(savedFormData);
+      if (parsedFormData) {
+        form.setValue("title", parsedFormData.title);
+        form.setValue("description", parsedFormData.description);
+        form.setValue("priority", parsedFormData.priority);
+        form.setValue("is_scheduled", parsedFormData.is_scheduled || false);
+        if (parsedFormData.delivery_date) {
+          form.setValue("delivery_date", new Date(parsedFormData.delivery_date));
+        }
+        form.setValue("delivery_time", parsedFormData.delivery_time);
+      }
     }
 
     const subscription = form.watch((values) => {
       localStorage.setItem("formData", JSON.stringify(values));
     });
     return () => subscription.unsubscribe();
-  }, [form]);
+  }, [form, draftId, t]);
+
+  const handleSaveDraft = () => {
+    const draftData = formToDraft(formValues, selectedStudents, selectedGroups);
+    const draft = {
+      ...draftData,
+      id: draftId || undefined
+    };
+    
+    const savedDraft = saveDraft(draft);
+    
+    toast({
+      title: t("draftSaved"),
+      description: formValues.title || t("untitledDraft"),
+    });
+    
+    if (!draftId) {
+      router.replace(`/messages/create?draft=${savedDraft.id}`);
+    }
+  };
 
   // Helper function to get priority color
   const getPriorityColor = (priority: string) => {
@@ -496,128 +543,148 @@ export default function SendMessagePage() {
               <Separator />
 
               <div className="flex justify-between items-center pt-2">
-                <Link href="/messages" passHref>
-                  <Button type="button" variant="outline" size="lg">
-                    {t("cancel")}
-                  </Button>
-                </Link>
-
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      type="button"
-                      size="lg"
-                      disabled={
-                        isPending ||
-                        (selectedGroups.length === 0 &&
-                          selectedStudents.length === 0)
-                      }
-                      className="gap-2"
-                    >
-                      <Send className="h-5 w-5" />
-                      {isPending ? `${t("sendMessage")}...` : t("sendMessage")}
+                <div className="flex gap-2">
+                  <Link href="/messages" passHref>
+                    <Button type="button" variant="outline" size="lg">
+                      {t("cancel")}
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[700px]">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl">
-                        {t("preview")}
-                      </DialogTitle>
-                    </DialogHeader>
+                  </Link>
+                  <Link href="/messages/drafts" passHref>
+                    <Button type="button" variant="outline" size="lg">
+                      {t("viewDrafts")}
+                    </Button>
+                  </Link>
+                </div>
 
-                    <div className="space-y-5 py-4">
-                      <div className="space-y-3">
-                        <h3 className="text-xl font-medium">
-                          {formValues.title}
-                        </h3>
-                        <p className="text-base whitespace-pre-wrap">
-                          {formValues.description}
-                        </p>
-                      </div>
+                <div className="flex gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="lg" 
+                    onClick={handleSaveDraft}
+                    className="gap-2"
+                  >
+                    <Save className="h-5 w-5" />
+                    {t("saveDraft")}
+                  </Button>
 
-                      <div className="flex items-center gap-2 mt-4">
-                        <Badge
-                          className={`text-base px-3 py-1 ${getPriorityColor(
-                            String(formValues.priority || "low")
-                          )}`}
-                        >
-                          {t("priority")}:{" "}
-                          {formValues.priority
-                            ? t(String(formValues.priority))
-                            : t("low")}
-                        </Badge>
-                      </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        type="button"
+                        size="lg"
+                        disabled={
+                          isPending ||
+                          (selectedGroups.length === 0 &&
+                            selectedStudents.length === 0)
+                        }
+                        className="gap-2"
+                      >
+                        <Send className="h-5 w-5" />
+                        {isPending ? `${t("sendMessage")}...` : t("sendMessage")}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[700px]">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl">
+                          {t("preview")}
+                        </DialogTitle>
+                      </DialogHeader>
 
-                      <Separator />
+                      <div className="space-y-5 py-4">
+                        <div className="space-y-3">
+                          <h3 className="text-xl font-medium">
+                            {formValues.title}
+                          </h3>
+                          <p className="text-base whitespace-pre-wrap">
+                            {formValues.description}
+                          </p>
+                        </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {selectedGroups.length > 0 && (
-                          <div>
-                            <h4 className="text-base font-medium mb-3 flex items-center gap-1">
-                              <Users className="h-5 w-5" /> {t("groups")} (
-                              {selectedGroups.length})
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {selectedGroups.map((group) => (
-                                <Badge
-                                  key={group.id}
-                                  variant="secondary"
-                                  className="text-sm px-2 py-1"
-                                >
-                                  {group?.name}
-                                </Badge>
-                              ))}
+                        <div className="flex items-center gap-2 mt-4">
+                          <Badge
+                            className={`text-base px-3 py-1 ${getPriorityColor(
+                              String(formValues.priority || "low")
+                            )}`}
+                          >
+                            {t("priority")}:{" "}
+                            {formValues.priority
+                              ? t(String(formValues.priority))
+                              : t("low")}
+                          </Badge>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {selectedGroups.length > 0 && (
+                            <div>
+                              <h4 className="text-base font-medium mb-3 flex items-center gap-1">
+                                <Users className="h-5 w-5" /> {t("groups")} (
+                                {selectedGroups.length})
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedGroups.map((group) => (
+                                  <Badge
+                                    key={group.id}
+                                    variant="secondary"
+                                    className="text-sm px-2 py-1"
+                                  >
+                                    {group?.name}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {selectedStudents.length > 0 && (
-                          <div>
-                            <h4 className="text-base font-medium mb-3 flex items-center gap-1">
-                              <UserRound className="h-5 w-5" /> {t("students")}{" "}
-                              ({selectedStudents.length})
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {selectedStudents.map((student) => (
-                                <Badge
-                                  key={student.id}
-                                  variant="secondary"
-                                  className="text-sm px-2 py-1"
-                                >
-                                  {tName("name", { ...student, parents: "" })}
-                                </Badge>
-                              ))}
+                          {selectedStudents.length > 0 && (
+                            <div>
+                              <h4 className="text-base font-medium mb-3 flex items-center gap-1">
+                                <UserRound className="h-5 w-5" /> {t("students")}{" "}
+                                ({selectedStudents.length})
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedStudents.map((student) => (
+                                  <Badge
+                                    key={student.id}
+                                    variant="secondary"
+                                    className="text-sm px-2 py-1"
+                                  >
+                                    {tName("name", { ...student, parents: "" })}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <DialogFooter className="gap-2 sm:gap-0">
-                      <DialogClose asChild>
-                        <Button type="button" variant="outline" size="lg">
-                          {t("edit")}
-                        </Button>
-                      </DialogClose>
-                      <DialogClose asChild>
-                        <Button
-                          size="lg"
-                          onClick={() => {
-                            if (formRef.current) {
-                              formRef.current.dispatchEvent(
-                                new Event("submit", { bubbles: true })
-                              );
-                            }
-                          }}
-                          className="gap-2"
-                        >
-                          <Send className="h-5 w-5" />
-                          {t("confirm")}
-                        </Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <DialogClose asChild>
+                          <Button type="button" variant="outline" size="lg">
+                            {t("edit")}
+                          </Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                          <Button
+                            size="lg"
+                            onClick={() => {
+                              if (formRef.current) {
+                                formRef.current.dispatchEvent(
+                                  new Event("submit", { bubbles: true })
+                                );
+                              }
+                            }}
+                            className="gap-2"
+                          >
+                            <Send className="h-5 w-5" />
+                            {t("confirm")}
+                          </Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
             </form>
           </Form>

@@ -124,7 +124,22 @@
     "edit": "編集",
     "cancel": "キャンセル",
     "saveChanges": "変更を保存",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "delivery_at": "配信予定日時",
+    "saveDraft": "下書き保存",
+    "draftSaved": "下書き保存完了",
+    "draftLoaded": "下書き読み込み完了",
+    "untitledDraft": "無題の下書き",
+    "messageDrafts": "メッセージ下書き",
+    "draftsDescription": "保存した下書きメッセージを表示、編集、管理する",
+    "viewDrafts": "下書き一覧",
+    "newMessage": "新規メッセージ",
+    "noDrafts": "保存された下書きはまだありません",
+    "deleteDraft": "下書きを削除",
+    "deleteDraftDescription": "この操作は元に戻せません。下書きは完全に削除されます。",
+    "draftDeleted": "下書き削除完了",
+    "draftDeletedDescription": "下書きが削除されました",
+    "lastUpdated": "最終更新日"
   },
   "ThisMessage": {
     "AS_PUBLISHER": "出版社",

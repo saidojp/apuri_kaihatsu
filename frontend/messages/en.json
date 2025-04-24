@@ -132,7 +132,21 @@
     "deliveryTime": "Delivery Time",
     "selectDate": "Select a date",
     "scheduledMessages": "Scheduled Messages",
-    "delivery_at": "Scheduled for"
+    "delivery_at": "Scheduled for",
+    "saveDraft": "Save Draft",
+    "draftSaved": "Draft Saved",
+    "draftLoaded": "Draft Loaded",
+    "untitledDraft": "Untitled Draft",
+    "messageDrafts": "Message Drafts",
+    "draftsDescription": "View, edit, and manage your saved draft messages",
+    "viewDrafts": "View Drafts",
+    "newMessage": "New Message",
+    "noDrafts": "You don't have any saved drafts yet",
+    "deleteDraft": "Delete Draft",
+    "deleteDraftDescription": "This action cannot be undone. The draft will be permanently deleted.",
+    "draftDeleted": "Draft Deleted",
+    "draftDeletedDescription": "Your draft has been successfully deleted",
+    "lastUpdated": "Last Updated"
   },
   "ThisMessage": {
     "AS_PUBLISHER": "Publisher",

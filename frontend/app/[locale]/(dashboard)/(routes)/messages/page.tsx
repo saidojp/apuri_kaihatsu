@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Clock,
   Eye,
+  Save
 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import PaginationApi from "@/components/PaginationApi";
@@ -316,12 +317,20 @@ export default function Info() {
           <MessageSquare className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-semibold">{t("posts")}</h1>
         </div>
-        <Link href={`${pathName}/create`} passHref>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            {t("createpost")}
-          </Button>
-        </Link>
+        <div className="flex items-center space-x-3">
+          <Link href={`${pathName}/create`} passHref>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              {t("createpost")}
+            </Button>
+          </Link>
+          <Link href={`${pathName}/drafts`} passHref>
+            <Button variant="outline" className="gap-2">
+              <Save className="h-4 w-4" />
+              {tSend("viewDrafts")}
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Tabs
