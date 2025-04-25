@@ -227,6 +227,24 @@ export default function SendMessagePage() {
               </Link>
               <CardTitle className="text-2xl">{t("sendMessage")}</CardTitle>
             </div>
+            <div className="flex gap-2">
+              <Link href="/messages/drafts" passHref>
+                <Button type="button" variant="outline" size="sm">
+                  <Save className="h-4 w-4 mr-1" />
+                  {t("viewDrafts")}
+                </Button>
+              </Link>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSaveDraft}
+                className="gap-1"
+              >
+                <Save className="h-4 w-4" />
+                {t("saveDraft")}
+              </Button>
+            </div>
           </div>
           <CardDescription className="text-base">
             {t("createNewMessage")}
@@ -543,148 +561,128 @@ export default function SendMessagePage() {
               <Separator />
 
               <div className="flex justify-between items-center pt-2">
-                <div className="flex gap-2">
-                  <Link href="/messages" passHref>
-                    <Button type="button" variant="outline" size="lg">
-                      {t("cancel")}
-                    </Button>
-                  </Link>
-                  <Link href="/messages/drafts" passHref>
-                    <Button type="button" variant="outline" size="lg">
-                      {t("viewDrafts")}
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="lg" 
-                    onClick={handleSaveDraft}
-                    className="gap-2"
-                  >
-                    <Save className="h-5 w-5" />
-                    {t("saveDraft")}
+                <Link href="/messages" passHref>
+                  <Button type="button" variant="outline" size="lg">
+                    {t("cancel")}
                   </Button>
+                </Link>
 
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        type="button"
-                        size="lg"
-                        disabled={
-                          isPending ||
-                          (selectedGroups.length === 0 &&
-                            selectedStudents.length === 0)
-                        }
-                        className="gap-2"
-                      >
-                        <Send className="h-5 w-5" />
-                        {isPending ? `${t("sendMessage")}...` : t("sendMessage")}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[700px]">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl">
-                          {t("preview")}
-                        </DialogTitle>
-                      </DialogHeader>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      size="lg"
+                      disabled={
+                        isPending ||
+                        (selectedGroups.length === 0 &&
+                          selectedStudents.length === 0)
+                      }
+                      className="gap-2"
+                    >
+                      <Send className="h-5 w-5" />
+                      {isPending ? `${t("sendMessage")}...` : t("sendMessage")}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl">
+                        {t("preview")}
+                      </DialogTitle>
+                    </DialogHeader>
 
-                      <div className="space-y-5 py-4">
-                        <div className="space-y-3">
-                          <h3 className="text-xl font-medium">
-                            {formValues.title}
-                          </h3>
-                          <p className="text-base whitespace-pre-wrap">
-                            {formValues.description}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-4">
-                          <Badge
-                            className={`text-base px-3 py-1 ${getPriorityColor(
-                              String(formValues.priority || "low")
-                            )}`}
-                          >
-                            {t("priority")}:{" "}
-                            {formValues.priority
-                              ? t(String(formValues.priority))
-                              : t("low")}
-                          </Badge>
-                        </div>
-
-                        <Separator />
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {selectedGroups.length > 0 && (
-                            <div>
-                              <h4 className="text-base font-medium mb-3 flex items-center gap-1">
-                                <Users className="h-5 w-5" /> {t("groups")} (
-                                {selectedGroups.length})
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {selectedGroups.map((group) => (
-                                  <Badge
-                                    key={group.id}
-                                    variant="secondary"
-                                    className="text-sm px-2 py-1"
-                                  >
-                                    {group?.name}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {selectedStudents.length > 0 && (
-                            <div>
-                              <h4 className="text-base font-medium mb-3 flex items-center gap-1">
-                                <UserRound className="h-5 w-5" /> {t("students")}{" "}
-                                ({selectedStudents.length})
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {selectedStudents.map((student) => (
-                                  <Badge
-                                    key={student.id}
-                                    variant="secondary"
-                                    className="text-sm px-2 py-1"
-                                  >
-                                    {tName("name", { ...student, parents: "" })}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                    <div className="space-y-5 py-4">
+                      <div className="space-y-3">
+                        <h3 className="text-xl font-medium">
+                          {formValues.title}
+                        </h3>
+                        <p className="text-base whitespace-pre-wrap">
+                          {formValues.description}
+                        </p>
                       </div>
 
-                      <DialogFooter className="gap-2 sm:gap-0">
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline" size="lg">
-                            {t("edit")}
-                          </Button>
-                        </DialogClose>
-                        <DialogClose asChild>
-                          <Button
-                            size="lg"
-                            onClick={() => {
-                              if (formRef.current) {
-                                formRef.current.dispatchEvent(
-                                  new Event("submit", { bubbles: true })
-                                );
-                              }
-                            }}
-                            className="gap-2"
-                          >
-                            <Send className="h-5 w-5" />
-                            {t("confirm")}
-                          </Button>
-                        </DialogClose>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                      <div className="flex items-center gap-2 mt-4">
+                        <Badge
+                          className={`text-base px-3 py-1 ${getPriorityColor(
+                            String(formValues.priority || "low")
+                          )}`}
+                        >
+                          {t("priority")}:{" "}
+                          {formValues.priority
+                            ? t(String(formValues.priority))
+                            : t("low")}
+                        </Badge>
+                      </div>
+
+                      <Separator />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {selectedGroups.length > 0 && (
+                          <div>
+                            <h4 className="text-base font-medium mb-3 flex items-center gap-1">
+                              <Users className="h-5 w-5" /> {t("groups")} (
+                              {selectedGroups.length})
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedGroups.map((group) => (
+                                <Badge
+                                  key={group.id}
+                                  variant="secondary"
+                                  className="text-sm px-2 py-1"
+                                >
+                                  {group?.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedStudents.length > 0 && (
+                          <div>
+                            <h4 className="text-base font-medium mb-3 flex items-center gap-1">
+                              <UserRound className="h-5 w-5" /> {t("students")}{" "}
+                              ({selectedStudents.length})
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedStudents.map((student) => (
+                                <Badge
+                                  key={student.id}
+                                  variant="secondary"
+                                  className="text-sm px-2 py-1"
+                                >
+                                  {tName("name", { ...student, parents: "" })}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline" size="lg">
+                          {t("edit")}
+                        </Button>
+                      </DialogClose>
+                      <DialogClose asChild>
+                        <Button
+                          size="lg"
+                          onClick={() => {
+                            if (formRef.current) {
+                              formRef.current.dispatchEvent(
+                                new Event("submit", { bubbles: true })
+                              );
+                            }
+                          }}
+                          className="gap-2"
+                        >
+                          <Send className="h-5 w-5" />
+                          {t("confirm")}
+                        </Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </form>
           </Form>

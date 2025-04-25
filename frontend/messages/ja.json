@@ -139,7 +139,14 @@
     "deleteDraftDescription": "この操作は元に戻せません。下書きは完全に削除されます。",
     "draftDeleted": "下書き削除完了",
     "draftDeletedDescription": "下書きが削除されました",
-    "lastUpdated": "最終更新日"
+    "lastUpdated": "最終更新日",
+    "scheduleDelivery": "配信予定の設定",
+    "scheduleForLater": "後で配信する",
+    "scheduleDescription": "メッセージを指定した日時に送信する",
+    "deliveryDate": "配信日",
+    "deliveryTime": "配信時間",
+    "selectDate": "日付を選択",
+    "scheduledMessages": "予定されたメッセージ"
   },
   "ThisMessage": {
     "AS_PUBLISHER": "出版社",
