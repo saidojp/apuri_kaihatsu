@@ -290,21 +290,103 @@ export default function Info() {
   const scheduledPostColumns: ColumnDef<Post>[] = [
     ...postColumns.slice(0, postColumns.length - 1),
     {
+      accessorKey: "status",
+      header: tSend("status"),
+      cell: ({ row }) => {
+        const status = row.original.status || "scheduled";
+        let badge;
+        
+        if (status === "delivered") {
+          badge = (
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              {tSend("delivered")}
+            </Badge>
+          );
+        } else if (status === "pending") {
+          badge = (
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+              {tSend("pending")}
+            </Badge>
+          );
+        } else {
+          badge = (
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              {tSend("scheduled")}
+            </Badge>
+          );
+        }
+        
+        return (
+          <Link href={`${pathName}/${row.original.id}`}>
+            {badge}
+          </Link>
+        );
+      },
+    },
+    {
       accessorKey: "delivery_at",
       header: tSend("delivery_at"),
       cell: ({ row }) => {
-        const deliveryDate = row.original.delivery_at 
-          ? new Date(row.original.delivery_at) 
-          : null;
+        if (!row.original.delivery_at) return null;
         
-        return deliveryDate ? (
-          <Link
-            href={`messages/${row.original.id}`}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {format(deliveryDate, "PPP p")}
-          </Link>
-        ) : null;
+        try {
+          const dateStr = row.original.delivery_at;
+          
+          // Parse parts without creating Date objects to avoid automatic conversions
+          let datePart, timePart;
+          
+          if (dateStr.includes('|')) {
+            // Our custom format - use exactly as stored
+            [datePart, timePart] = dateStr.split('|');
+          } else if (dateStr.includes(' ')) {
+            // MySQL format - adjust for the 5-hour difference
+            [datePart, timePart] = dateStr.split(' ');
+            // MySQL time needs to be adjusted back by 5 hours to show what user selected
+            const [hour, minute] = timePart.split(':');
+            const adjustedHour = (parseInt(hour) - 5 + 24) % 24; // Add 24 to handle negative hours
+            timePart = `${String(adjustedHour).padStart(2, '0')}:${minute}`;
+          } else {
+            // Some other format - do basic cleanup
+            const cleanStr = dateStr.replace('T', ' ').split('.')[0];
+            [datePart, timePart] = cleanStr.split(' ');
+          }
+          
+          const [year, month, day] = datePart.split('-').map(Number);
+          const [hour, minute] = timePart.split(':').map(Number);
+          
+          // No timezone adjustments - display exactly as calculated above
+          
+          // Format month name
+          const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+          
+          // Format time in 12-hour format
+          const hour12 = hour % 12 || 12;
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          
+          // Create user-friendly display format showing exactly what was selected
+          const formattedDate = `${months[month-1]} ${day}, ${year}`;
+          const formattedTime = `${hour12}:${String(minute).padStart(2, '0')} ${ampm}`;
+          
+          const formatted = (
+            <div className="flex flex-col">
+              <span>{formattedDate}</span>
+              <span className="text-sm font-medium text-primary">{formattedTime}</span>
+            </div>
+          );
+          
+          return (
+            <Link
+              href={`${pathName}/${row.original.id}`}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {formatted}
+            </Link>
+          );
+        } catch (error) {
+          // Fallback
+          return row.original.delivery_at;
+        }
       },
     },
     postColumns[postColumns.length - 1], // Add the action column at the end

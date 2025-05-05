@@ -1230,25 +1230,27 @@ class StudentController implements IController {
             // Validate and format delivery_at if provided
             let deliveryAtValue = null;
             if (delivery_at) {
-                // Check if the delivery date is in the future
-                const deliveryDate = new Date(delivery_at);
-                const now = new Date();
-                
-                if (isNaN(deliveryDate.getTime())) {
-                    throw {
-                        status: 401,
-                        message: 'Invalid delivery date format'
-                    }
+                // Check if it's our custom format with the pipe symbol
+                if (delivery_at.includes('|')) {
+                    // Split into date and time parts
+                    const [datePart, timePart] = delivery_at.split('|');
+                    const [year, month, day] = datePart.split('-');
+                    const [hour, minute] = timePart.split(':');
+                    
+                    // Manually adjust for the 5-hour difference
+                    // This ensures the time stored in MySQL matches what the user selected
+                    const adjustedHour = (parseInt(hour) + 5) % 24;
+                    
+                    // Store as standard MySQL datetime format with the fixed offset
+                    deliveryAtValue = `${year}-${month}-${day} ${String(adjustedHour).padStart(2, '0')}:${minute}:00`;
+                } else {
+                    // Handle regular date format (fallback)
+                    const deliveryDate = new Date(delivery_at);
+                    // Convert to MySQL format
+                    deliveryAtValue = deliveryDate.toISOString().slice(0, 19).replace('T', ' ');
                 }
                 
-                if (deliveryDate <= now) {
-                    throw {
-                        status: 401,
-                        message: 'Delivery date must be in the future'
-                    }
-                }
-                
-                deliveryAtValue = deliveryDate.toISOString().slice(0, 19).replace('T', ' ');
+                // Continue with validation...
             }
 
             let insertQuery = `

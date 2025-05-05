@@ -75,6 +75,10 @@ import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { saveDraft, getDraft, formToDraft, clearFormData } from "@/lib/drafts";
+import {
+  RadioGroup,
+  RadioGroupItem
+} from "@/components/ui/radio-group";
 
 const formSchema = z.object({
   title: z.string().min(1),
@@ -256,14 +260,22 @@ export default function SendMessagePage() {
             <form
               onSubmit={form.handleSubmit((data) => {
                 if (data.is_scheduled && data.delivery_date && data.delivery_time) {
+                  // Get raw input values
                   const [hours, minutes] = data.delivery_time.split(':').map(Number);
                   const deliveryDate = new Date(data.delivery_date);
-                  deliveryDate.setHours(hours, minutes);
                   
-                  const delivery_at = deliveryDate;
+                  // Create a string representation of the exact time the user selected
+                  // Format: YYYY-MM-DD|HH:MM - using pipe symbol to store raw values
+                  const year = deliveryDate.getFullYear();
+                  const month = deliveryDate.getMonth() + 1;
+                  const day = deliveryDate.getDate();
+                  
+                  // Store the exact time values as entered by the user without any adjustments
+                  const userSelectedTime = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}|${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                  
                   mutate({
                     ...data,
-                    delivery_at,
+                    delivery_at: userSelectedTime,
                     students: selectedStudents.map((student) => student.id),
                     groups: selectedGroups.map((group) => group.id),
                   } as any);

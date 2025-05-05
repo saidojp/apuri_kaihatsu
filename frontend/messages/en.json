@@ -146,7 +146,19 @@
     "deleteDraftDescription": "This action cannot be undone. The draft will be permanently deleted.",
     "draftDeleted": "Draft Deleted",
     "draftDeletedDescription": "Your draft has been successfully deleted",
-    "lastUpdated": "Last Updated"
+    "lastUpdated": "Last Updated",
+    "timezoneOption": "Timezone",
+    "useMyTimezone": "Use my local timezone",
+    "useSpecificTimezone": "Use specific timezone",
+    "selectTimezone": "Select timezone",
+    "scheduledDeliveryInfo": "Delivery Times are Exact",
+    "exactTimeDelivery": "Your message will be delivered at the exact time you specify in the selected timezone.",
+    "deliveryStatus": "Delivery Status",
+    "status": "Status",
+    "scheduled": "Scheduled",
+    "delivered": "Delivered",
+    "pending": "Pending",
+    "deliveredAt": "Delivered at"
   },
   "ThisMessage": {
     "AS_PUBLISHER": "Publisher",

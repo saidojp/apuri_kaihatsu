@@ -13,11 +13,26 @@ async function deliverScheduledMessages() {
 
     // Find messages that are scheduled and ready to be delivered
     const scheduledMessages = await DB.query(`
-      SELECT id, title 
+      SELECT id, title, delivery_at
       FROM Post 
       WHERE delivery_at IS NOT NULL 
-        AND delivery_at <= NOW() 
-        AND delivery_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+        AND (
+          -- For pipe-formatted dates (custom format)
+          (delivery_at LIKE '%|%' AND 
+            -- Convert pipe format to MySQL datetime and add 5 hours to match storage format
+            TIMESTAMP(
+              CONCAT(
+                SUBSTRING_INDEX(delivery_at, '|', 1),
+                ' ',
+                SUBSTRING_INDEX(delivery_at, '|', -1)
+              )
+            ) + INTERVAL 5 HOUR <= NOW()
+          )
+          OR
+          -- For standard MySQL datetime format (already has the 5-hour offset applied)
+          (delivery_at NOT LIKE '%|%' AND delivery_at <= NOW())
+        )
+        AND delivery_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
     `);
 
     if (scheduledMessages.length === 0) {
@@ -33,7 +48,9 @@ async function deliverScheduledMessages() {
       // Update the message to mark it as delivered (clear the delivery_at timestamp)
       await DB.execute(`
         UPDATE Post 
-        SET delivery_at = NULL 
+        SET delivery_at = NULL,
+            delivered_at = NOW(),
+            status = 'delivered' 
         WHERE id = :id
       `, {
         id: message.id

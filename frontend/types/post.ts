@@ -10,4 +10,8 @@ export default interface Post {
   edited_at: string;
   read_percent: string;
   delivery_at?: string;
+  timezone?: string;
+  timezone_offset?: string;
+  status?: string;
+  delivered_at?: string;
 }
