@@ -89,6 +89,22 @@ const formSchema = z.object({
   delivery_time: z.string().optional(),
 });
 
+// Добавьте функцию преобразования даты+времени в строку UTC
+function toUTCString(date: Date, time: string): string {
+  const [hours, minutes] = time.split(':').map(Number);
+  const localDate = new Date(date);
+  localDate.setHours(hours, minutes, 0, 0);
+
+  // Получаем компоненты UTC
+  const year = localDate.getUTCFullYear();
+  const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(localDate.getUTCDate()).padStart(2, '0');
+  const hour = String(localDate.getUTCHours()).padStart(2, '0');
+  const minute = String(localDate.getUTCMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}|${hour}:${minute}`;
+}
+
 export default function SendMessagePage() {
   const zodErrors = useMakeZodI18nMap();
   z.setErrorMap(zodErrors);
@@ -260,22 +276,15 @@ export default function SendMessagePage() {
             <form
               onSubmit={form.handleSubmit((data) => {
                 if (data.is_scheduled && data.delivery_date && data.delivery_time) {
-                  // Get raw input values
-                  const [hours, minutes] = data.delivery_time.split(':').map(Number);
-                  const deliveryDate = new Date(data.delivery_date);
-                  
-                  // Create a string representation of the exact time the user selected
-                  // Format: YYYY-MM-DD|HH:MM - using pipe symbol to store raw values
-                  const year = deliveryDate.getFullYear();
-                  const month = deliveryDate.getMonth() + 1;
-                  const day = deliveryDate.getDate();
-                  
-                  // Store the exact time values as entered by the user without any adjustments
-                  const userSelectedTime = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}|${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-                  
+                  // Формируем строку в локальном времени пользователя
+                  const year = data.delivery_date.getFullYear();
+                  const month = String(data.delivery_date.getMonth() + 1).padStart(2, '0');
+                  const day = String(data.delivery_date.getDate()).padStart(2, '0');
+                  const delivery_at = `${year}-${month}-${day}|${data.delivery_time}`;
+
                   mutate({
                     ...data,
-                    delivery_at: userSelectedTime,
+                    delivery_at,
                     students: selectedStudents.map((student) => student.id),
                     groups: selectedGroups.map((group) => group.id),
                   } as any);
@@ -434,9 +443,14 @@ export default function SendMessagePage() {
                                     mode="single"
                                     selected={field.value}
                                     onSelect={field.onChange}
-                                    disabled={(date) =>
-                                      date < new Date()
-                                    }
+                                    disabled={(date) => {
+                                      // Запрещаем только даты до сегодняшнего дня (без учета времени)
+                                      const today = new Date();
+                                      today.setHours(0, 0, 0, 0);
+                                      const d = new Date(date);
+                                      d.setHours(0, 0, 0, 0);
+                                      return d < today;
+                                    }}
                                     initialFocus
                                   />
                                 </PopoverContent>

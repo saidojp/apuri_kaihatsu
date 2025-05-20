@@ -19,20 +19,31 @@ async function deliverScheduledMessages() {
         AND (
           -- For pipe-formatted dates (custom format)
           (delivery_at LIKE '%|%' AND 
-            -- Convert pipe format to MySQL datetime and add 5 hours to match storage format
             TIMESTAMP(
               CONCAT(
                 SUBSTRING_INDEX(delivery_at, '|', 1),
                 ' ',
                 SUBSTRING_INDEX(delivery_at, '|', -1)
               )
-            ) + INTERVAL 5 HOUR <= NOW()
+            ) <= NOW()
           )
           OR
-          -- For standard MySQL datetime format (already has the 5-hour offset applied)
+          -- For standard MySQL datetime format
           (delivery_at NOT LIKE '%|%' AND delivery_at <= NOW())
         )
-        AND delivery_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+        AND (
+          (delivery_at LIKE '%|%' AND 
+            TIMESTAMP(
+              CONCAT(
+                SUBSTRING_INDEX(delivery_at, '|', 1),
+                ' ',
+                SUBSTRING_INDEX(delivery_at, '|', -1)
+              )
+            ) > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+          )
+          OR
+          (delivery_at NOT LIKE '%|%' AND delivery_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE))
+        )
     `);
 
     if (scheduledMessages.length === 0) {
@@ -78,4 +89,4 @@ if (require.main === module) {
     });
 }
 
-export default deliverScheduledMessages; 
+export default deliverScheduledMessages;
