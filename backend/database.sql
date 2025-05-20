@@ -1,5 +1,11 @@
+[mysqld]
+default-time-zone = 'Asia/Yekaterinburg'
+
 SET
     FOREIGN_KEY_CHECKS = 0;
+
+SET GLOBAL time_zone = 'Asia/Yekaterinburg';
+SET time_zone = 'Asia/Yekaterinburg';
 
 CREATE DATABASE `Parents`;
 

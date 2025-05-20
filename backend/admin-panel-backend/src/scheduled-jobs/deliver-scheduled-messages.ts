@@ -16,34 +16,8 @@ async function deliverScheduledMessages() {
       SELECT id, title, delivery_at
       FROM Post 
       WHERE delivery_at IS NOT NULL 
-        AND (
-          -- For pipe-formatted dates (custom format)
-          (delivery_at LIKE '%|%' AND 
-            TIMESTAMP(
-              CONCAT(
-                SUBSTRING_INDEX(delivery_at, '|', 1),
-                ' ',
-                SUBSTRING_INDEX(delivery_at, '|', -1)
-              )
-            ) <= NOW()
-          )
-          OR
-          -- For standard MySQL datetime format
-          (delivery_at NOT LIKE '%|%' AND delivery_at <= NOW())
-        )
-        AND (
-          (delivery_at LIKE '%|%' AND 
-            TIMESTAMP(
-              CONCAT(
-                SUBSTRING_INDEX(delivery_at, '|', 1),
-                ' ',
-                SUBSTRING_INDEX(delivery_at, '|', -1)
-              )
-            ) > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
-          )
-          OR
-          (delivery_at NOT LIKE '%|%' AND delivery_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE))
-        )
+        AND delivery_at <= NOW()
+        AND delivery_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
     `);
 
     if (scheduledMessages.length === 0) {
@@ -60,7 +34,7 @@ async function deliverScheduledMessages() {
       await DB.execute(`
         UPDATE Post 
         SET delivery_at = NULL,
-            delivered_at = NOW(),
+            delivered_at = UTC_TIMESTAMP(),
             status = 'delivered' 
         WHERE id = :id
       `, {

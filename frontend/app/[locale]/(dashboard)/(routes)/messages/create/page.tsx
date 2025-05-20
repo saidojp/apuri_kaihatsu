@@ -89,20 +89,20 @@ const formSchema = z.object({
   delivery_time: z.string().optional(),
 });
 
-// Добавьте функцию преобразования даты+времени в строку UTC
-function toUTCString(date: Date, time: string): string {
+// Function to convert local date and time to UTC string in 'YYYY-MM-DD HH:mm:ss' format
+function toUTCMySQLDateTime(date: Date, time: string): string {
   const [hours, minutes] = time.split(':').map(Number);
   const localDate = new Date(date);
   localDate.setHours(hours, minutes, 0, 0);
 
-  // Получаем компоненты UTC
   const year = localDate.getUTCFullYear();
   const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
   const day = String(localDate.getUTCDate()).padStart(2, '0');
   const hour = String(localDate.getUTCHours()).padStart(2, '0');
   const minute = String(localDate.getUTCMinutes()).padStart(2, '0');
+  const second = '00';
 
-  return `${year}-${month}-${day}|${hour}:${minute}`;
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
 export default function SendMessagePage() {
@@ -276,12 +276,7 @@ export default function SendMessagePage() {
             <form
               onSubmit={form.handleSubmit((data) => {
                 if (data.is_scheduled && data.delivery_date && data.delivery_time) {
-                  // Формируем строку в локальном времени пользователя
-                  const year = data.delivery_date.getFullYear();
-                  const month = String(data.delivery_date.getMonth() + 1).padStart(2, '0');
-                  const day = String(data.delivery_date.getDate()).padStart(2, '0');
-                  const delivery_at = `${year}-${month}-${day}|${data.delivery_time}`;
-
+                  const delivery_at = toUTCMySQLDateTime(data.delivery_date, data.delivery_time);
                   mutate({
                     ...data,
                     delivery_at,
@@ -444,7 +439,7 @@ export default function SendMessagePage() {
                                     selected={field.value}
                                     onSelect={field.onChange}
                                     disabled={(date) => {
-                                      // Запрещаем только даты до сегодняшнего дня (без учета времени)
+                                      // Disable dates before today (ignoring time)
                                       const today = new Date();
                                       today.setHours(0, 0, 0, 0);
                                       const d = new Date(date);
@@ -638,6 +633,20 @@ export default function SendMessagePage() {
                             : t("low")}
                         </Badge>
                       </div>
+
+                      {formValues.is_scheduled && formValues.delivery_date && formValues.delivery_time && (
+                        <div className="mt-4">
+                          <h4 className="text-base font-medium mb-2">{t("scheduledFor")}</h4>
+                          <p>
+                            {(() => {
+                              const deliveryDateTime = new Date(formValues.delivery_date);
+                              const [hours, minutes] = formValues.delivery_time.split(':').map(Number);
+                              deliveryDateTime.setHours(hours, minutes);
+                              return deliveryDateTime.toLocaleString();
+                            })()}
+                          </p>
+                        </div>
+                      )}
 
                       <Separator />
 
