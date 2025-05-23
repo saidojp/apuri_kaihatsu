@@ -79,6 +79,7 @@ import {
   RadioGroup,
   RadioGroupItem
 } from "@/components/ui/radio-group";
+import { formatInTimeZone } from "date-fns-tz"; // Added import
 
 const formSchema = z.object({
   title: z.string().min(1),
@@ -88,22 +89,6 @@ const formSchema = z.object({
   delivery_date: z.date().optional(),
   delivery_time: z.string().optional(),
 });
-
-// Function to convert local date and time to UTC string in 'YYYY-MM-DD HH:mm:ss' format
-function toUTCMySQLDateTime(date: Date, time: string): string {
-  const [hours, minutes] = time.split(':').map(Number);
-  const localDate = new Date(date);
-  localDate.setHours(hours, minutes, 0, 0);
-
-  const year = localDate.getUTCFullYear();
-  const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(localDate.getUTCDate()).padStart(2, '0');
-  const hour = String(localDate.getUTCHours()).padStart(2, '0');
-  const minute = String(localDate.getUTCMinutes()).padStart(2, '0');
-  const second = '00';
-
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
-}
 
 export default function SendMessagePage() {
   const zodErrors = useMakeZodI18nMap();
@@ -208,7 +193,6 @@ export default function SendMessagePage() {
     }
   };
 
-  // Helper function to get priority color
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -222,14 +206,12 @@ export default function SendMessagePage() {
     }
   };
 
-  // Remove a student from selection
   const removeStudent = (studentId: number) => {
     setSelectedStudents((prev) =>
       prev.filter((student) => student.id !== studentId)
     );
   };
 
-  // Remove a group from selection
   const removeGroup = (groupId: number) => {
     setSelectedGroups((prev) => prev.filter((group) => group.id !== groupId));
   };
@@ -276,7 +258,12 @@ export default function SendMessagePage() {
             <form
               onSubmit={form.handleSubmit((data) => {
                 if (data.is_scheduled && data.delivery_date && data.delivery_time) {
-                  const delivery_at = toUTCMySQLDateTime(data.delivery_date, data.delivery_time);
+                  const localDate = new Date(data.delivery_date);
+                  const [hour, minute] = data.delivery_time.split(':').map(Number);
+                  localDate.setHours(hour, minute, 0, 0);
+                  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                  const delivery_at = formatInTimeZone(localDate, userTimeZone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+
                   mutate({
                     ...data,
                     delivery_at,
@@ -439,7 +426,6 @@ export default function SendMessagePage() {
                                     selected={field.value}
                                     onSelect={field.onChange}
                                     disabled={(date) => {
-                                      // Disable dates before today (ignoring time)
                                       const today = new Date();
                                       today.setHours(0, 0, 0, 0);
                                       const d = new Date(date);
@@ -633,20 +619,6 @@ export default function SendMessagePage() {
                             : t("low")}
                         </Badge>
                       </div>
-
-                      {formValues.is_scheduled && formValues.delivery_date && formValues.delivery_time && (
-                        <div className="mt-4">
-                          <h4 className="text-base font-medium mb-2">{t("scheduledFor")}</h4>
-                          <p>
-                            {(() => {
-                              const deliveryDateTime = new Date(formValues.delivery_date);
-                              const [hours, minutes] = formValues.delivery_time.split(':').map(Number);
-                              deliveryDateTime.setHours(hours, minutes);
-                              return deliveryDateTime.toLocaleString();
-                            })()}
-                          </p>
-                        </div>
-                      )}
 
                       <Separator />
 

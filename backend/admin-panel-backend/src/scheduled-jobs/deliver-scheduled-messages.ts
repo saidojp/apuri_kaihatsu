@@ -3,15 +3,12 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-/**
- * Delivers scheduled messages that are due for delivery
- * This function should be run as a cron job (e.g. every minute)
- */
 async function deliverScheduledMessages() {
   try {
     console.log('[Scheduled Job] Checking for scheduled messages to deliver...');
 
-    // Find messages that are scheduled and ready to be delivered
+    await DB.execute(`SET time_zone = '+00:00'`); // Set session to UTC
+
     const scheduledMessages = await DB.query(`
       SELECT id, title, delivery_at
       FROM Post 
@@ -30,11 +27,10 @@ async function deliverScheduledMessages() {
     for (const message of scheduledMessages) {
       console.log(`[Scheduled Job] Delivering message: ${message.id} - ${message.title}`);
       
-      // Update the message to mark it as delivered (clear the delivery_at timestamp)
       await DB.execute(`
         UPDATE Post 
         SET delivery_at = NULL,
-            delivered_at = UTC_TIMESTAMP(),
+            delivered_at = NOW(),
             status = 'delivered' 
         WHERE id = :id
       `, {
@@ -50,7 +46,6 @@ async function deliverScheduledMessages() {
   }
 }
 
-// If this script is run directly (not imported), execute the function
 if (require.main === module) {
   deliverScheduledMessages()
     .then(() => {
