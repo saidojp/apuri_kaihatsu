@@ -79,7 +79,7 @@ import {
   RadioGroup,
   RadioGroupItem
 } from "@/components/ui/radio-group";
-import { formatInTimeZone } from "date-fns-tz"; // Added import
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 
 const formSchema = z.object({
   title: z.string().min(1),
@@ -143,7 +143,18 @@ export default function SendMessagePage() {
         if (draft.delivery_date) {
           form.setValue("delivery_date", new Date(draft.delivery_date));
         }
-        form.setValue("delivery_time", draft.delivery_time);
+        if (draft.delivery_time) {
+          try {
+            const timeParts = draft.delivery_time.split(':');
+            const dateForFormatting = new Date();
+            dateForFormatting.setHours(parseInt(timeParts[0], 10));
+            dateForFormatting.setMinutes(parseInt(timeParts[1], 10));
+            form.setValue("delivery_time", format(dateForFormatting, "HH:mm"));
+          } catch (error) {
+            console.error("Error formatting draft delivery time:", error);
+            form.setValue("delivery_time", draft.delivery_time);
+          }
+        }
         
         setSelectedStudents(draft.students);
         setSelectedGroups(draft.groups);
@@ -164,7 +175,18 @@ export default function SendMessagePage() {
         if (parsedFormData.delivery_date) {
           form.setValue("delivery_date", new Date(parsedFormData.delivery_date));
         }
-        form.setValue("delivery_time", parsedFormData.delivery_time);
+        if (parsedFormData.delivery_time) {
+          try {
+            const timeParts = parsedFormData.delivery_time.split(':');
+            const dateForFormatting = new Date();
+            dateForFormatting.setHours(parseInt(timeParts[0], 10));
+            dateForFormatting.setMinutes(parseInt(timeParts[1], 10));
+            form.setValue("delivery_time", format(dateForFormatting, "HH:mm"));
+          } catch (error) {
+            console.error("Error formatting parsed form data delivery time:", error);
+            form.setValue("delivery_time", parsedFormData.delivery_time);
+          }
+        }
       }
     }
 
@@ -261,8 +283,7 @@ export default function SendMessagePage() {
                   const localDate = new Date(data.delivery_date);
                   const [hour, minute] = data.delivery_time.split(':').map(Number);
                   localDate.setHours(hour, minute, 0, 0);
-                  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                  const delivery_at = formatInTimeZone(localDate, userTimeZone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+                  const delivery_at = localDate.toISOString();
 
                   mutate({
                     ...data,

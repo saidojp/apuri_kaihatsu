@@ -50,7 +50,7 @@ import useApiMutation from "@/lib/useApiMutation";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
 
 export default function Info() {
   const t = useTranslations("posts");
@@ -61,6 +61,7 @@ export default function Info() {
   const [search, setSearch] = useState("");
   const [scheduledSearch, setScheduledSearch] = useState("");
   const [activeTab, setActiveTab] = useState("sent"); // "sent" or "scheduled"
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { data } = useApiQuery<PostApi>(
     `post/list?page=${page}&text=${search}`,
     ["posts", page, search]
@@ -327,66 +328,28 @@ export default function Info() {
       accessorKey: "delivery_at",
       header: tSend("delivery_at"),
       cell: ({ row }) => {
-        if (!row.original.delivery_at) return null;
+        const deliveryAtString = row.original.delivery_at;
+        if (!deliveryAtString) return null;
         
-        try {
-          const dateStr = row.original.delivery_at;
-          
-          // Parse parts without creating Date objects to avoid automatic conversions
-          let datePart, timePart;
-          
-          if (dateStr.includes('|')) {
-            // Our custom format - use exactly as stored
-            [datePart, timePart] = dateStr.split('|');
-          } else if (dateStr.includes(' ')) {
-            // MySQL format - adjust for the 5-hour difference
-            [datePart, timePart] = dateStr.split(' ');
-            // MySQL time needs to be adjusted back by 5 hours to show what user selected
-            const [hour, minute] = timePart.split(':');
-            const adjustedHour = (parseInt(hour) - 5 + 24) % 24; // Add 24 to handle negative hours
-            timePart = `${String(adjustedHour).padStart(2, '0')}:${minute}`;
-          } else {
-            // Some other format - do basic cleanup
-            const cleanStr = dateStr.replace('T', ' ').split('.')[0];
-            [datePart, timePart] = cleanStr.split(' ');
-          }
-          
-          const [year, month, day] = datePart.split('-').map(Number);
-          const [hour, minute] = timePart.split(':').map(Number);
-          
-          // No timezone adjustments - display exactly as calculated above
-          
-          // Format month name
-          const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-                          'July', 'August', 'September', 'October', 'November', 'December'];
-          
-          // Format time in 12-hour format
-          const hour12 = hour % 12 || 12;
-          const ampm = hour >= 12 ? 'PM' : 'AM';
-          
-          // Create user-friendly display format showing exactly what was selected
-          const formattedDate = `${months[month-1]} ${day}, ${year}`;
-          const formattedTime = `${hour12}:${String(minute).padStart(2, '0')} ${ampm}`;
-          
-          const formatted = (
+        const dateUtc = new Date(deliveryAtString); // Date object from backend string (UTC)
+        
+        // Adjust the date by adding 5 hours for display purposes
+        const adjustedDate = new Date(dateUtc);
+        adjustedDate.setHours(adjustedDate.getHours() + 5);
+        
+        // Format the *adjusted* date for display in user's local timezone
+        const formattedDate = formatInTimeZone(adjustedDate, userTimeZone, "MM/dd/yyyy, hh:mm a");
+        
+        return (
+          <Link
+            href={`${pathName}/${row.original.id}`}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
             <div className="flex flex-col">
               <span>{formattedDate}</span>
-              <span className="text-sm font-medium text-primary">{formattedTime}</span>
             </div>
-          );
-          
-          return (
-            <Link
-              href={`${pathName}/${row.original.id}`}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {formatted}
-            </Link>
-          );
-        } catch (error) {
-          // Fallback
-          return row.original.delivery_at;
-        }
+          </Link>
+        );
       },
     },
     postColumns[postColumns.length - 1], // Add the action column at the end
